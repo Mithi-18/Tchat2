@@ -127,8 +127,8 @@ export default function ChatApp() {
          localId={localId}
          connectionState={connectionState}
          generateOffer={() => wrtc.current?.createOffer()}
-         acceptOffer={(sdp) => wrtc.current?.receiveOfferAndCreateAnswer(sdp)}
-         acceptAnswer={(sdp) => wrtc.current?.receiveAnswer(sdp)}
+         acceptOffer={(sdp: string) => wrtc.current?.receiveOfferAndCreateAnswer(sdp)}
+         acceptAnswer={(sdp: string) => wrtc.current?.receiveAnswer(sdp)}
          localSdp={localSdp}
        />
        

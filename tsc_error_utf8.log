@@ -1,0 +1,6 @@
+﻿src/App.tsx(4,25): error TS2307: Cannot find module '@/components/Sidebar' or its corresponding type declarations.
+src/App.tsx(5,28): error TS2307: Cannot find module '@/components/ChatWindow' or its corresponding type declarations.
+src/App.tsx(6,26): error TS2307: Cannot find module '@/components/InputBox' or its corresponding type declarations.
+src/App.tsx(7,29): error TS2307: Cannot find module '@/components/CallManager' or its corresponding type declarations.
+src/App.tsx(130,24): error TS7006: Parameter 'sdp' implicitly has an 'any' type.
+src/App.tsx(131,25): error TS7006: Parameter 'sdp' implicitly has an 'any' type.

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" class="dark h-full antialiased">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TunnelChat - Cyberpunk P2P</title>
+    <meta name="theme-color" content="#00ffff" />
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Google Fonts for Orbitron & Rajdhani -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+      :root {
+        --font-orbitron: 'Orbitron', monospace;
+        --font-rajdhani: 'Rajdhani', sans-serif;
+      }
+    </style>
+  </head>
+  <body class="min-h-full flex flex-col font-sans bg-[#050505] text-[#e0e0e0] overflow-hidden">
+    <div id="root" class="h-full w-full flex flex-col"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW Reg failed', err));
+        });
+      }
+    </script>
+  </body>
+</html>
