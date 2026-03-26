@@ -1,6 +1,6 @@
-'use client';
 import { useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { ArrowLeft } from 'lucide-react';
 import { Sidebar } from '@/components/Sidebar';
 import { ChatWindow } from '@/components/ChatWindow';
 import { InputBox } from '@/components/InputBox';
@@ -93,10 +93,8 @@ export default function ChatApp() {
     setMessages(prev => [...prev, newMsg]);
     await saveMessage(newMsg);
 
-    // Send via WebRTC DataChannel if peer is connected
-    if (connectionState === 'connected') {
-      wrtc.current?.sendMessage(content);
-    }
+    // Send via WebRTC DataChannel (service handles readiness check)
+    wrtc.current?.sendMessage(content);
   };
 
   // --- Call Management ---
@@ -121,9 +119,10 @@ export default function ChatApp() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-cyber-dark text-cyber-cyan overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[100dvh] w-full bg-cyber-dark text-cyber-cyan overflow-hidden">
        {/* Sidebar connection manager */}
-       <Sidebar 
+       <div className={`${connectionState === 'connected' ? 'hidden md:flex' : 'flex'} w-full md:w-80 flex-shrink-0 h-full relative z-30`}>
+         <Sidebar 
          localId={localId}
          connectionState={connectionState}
          generateOffer={() => wrtc.current?.createOffer()}
@@ -131,13 +130,25 @@ export default function ChatApp() {
          acceptAnswer={(sdp: string) => wrtc.current?.receiveAnswer(sdp)}
          localSdp={localSdp}
        />
+       </div>
        
        {/* Main Chat Engine */}
-       <div className="flex flex-col flex-1 relative min-w-0">
+       <div className={`${connectionState !== 'connected' ? 'hidden md:flex' : 'flex'} flex-col flex-1 relative min-w-0 h-full md:border-l border-cyber-cyan/30`}>
           <div className="p-4 border-b border-cyber-cyan/30 flex justify-between items-center bg-cyber-dark/80 backdrop-blur z-20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-             <div>
-                <h2 className="font-mono text-lg text-cyber-cyan" style={{textShadow: "0 0 5px #00ffff"}}>Encrypted Channel</h2>
-                <div className="text-[10px] text-cyber-cyan/50 tracking-widest uppercase">PEER-TO-PEER DATA STREAM</div>
+             <div className="flex items-center gap-3">
+                <button 
+                  className="md:hidden p-2 text-cyber-pink hover:bg-cyber-pink/20 border border-cyber-pink/30 hover:border-cyber-pink rounded transition-colors active:scale-95" 
+                  onClick={() => {
+                    wrtc.current?.close();
+                    setConnectionState('disconnected');
+                  }}
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <div>
+                   <h2 className="font-mono text-base md:text-lg text-cyber-cyan" style={{textShadow: "0 0 5px #00ffff"}}>Encrypted Channel</h2>
+                   <div className="text-[10px] text-cyber-cyan/50 tracking-widest uppercase hidden sm:block">PEER-TO-PEER DATA STREAM</div>
+                </div>
              </div>
              
              {connectionState === 'connected' && (

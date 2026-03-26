@@ -28,8 +28,13 @@ export class WebRTCService {
 
     this.peerConnection.onicegatheringstatechange = () => {
       if (this.peerConnection?.iceGatheringState === 'complete') {
-        // Gathering completed, extract the full SDP with ICE candidates
         this.onIceCandidateGatheringComplete(JSON.stringify(this.peerConnection.localDescription));
+      }
+    };
+
+    this.peerConnection.onicecandidate = (event) => {
+      if (!event.candidate) {
+        this.onIceCandidateGatheringComplete(JSON.stringify(this.peerConnection?.localDescription));
       }
     };
 

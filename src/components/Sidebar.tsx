@@ -34,7 +34,7 @@ export function Sidebar({ localId, connectionState, generateOffer, acceptOffer, 
   };
 
   return (
-    <div className="w-80 bg-cyber-dark border-r border-cyber-cyan/30 flex flex-col h-full text-cyber-cyan font-sans relative overflow-hidden flex-shrink-0">
+    <div className="w-full h-full bg-cyber-dark flex flex-col text-cyber-cyan font-sans relative overflow-hidden flex-shrink-0">
       <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.02)_1px,transparent_1px)] bg-[size:10px_10px] pointer-events-none opacity-50"></div>
       
       <div className="p-4 border-b border-cyber-cyan/30 bg-cyber-dark/80 backdrop-blur z-10 flex items-center justify-between">
