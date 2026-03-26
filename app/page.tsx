@@ -1,65 +1,165 @@
-import Image from "next/image";
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { Sidebar } from '@/components/Sidebar';
+import { ChatWindow } from '@/components/ChatWindow';
+import { InputBox } from '@/components/InputBox';
+import { CallManager } from '@/components/CallManager';
+import { WebRTCService, ConnectionState } from '@/lib/webrtc';
+import { ChatMessage, saveMessage, getMessages } from '@/lib/storage';
 
-export default function Home() {
+export default function ChatApp() {
+  const [localId, setLocalId] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [remoteId, setRemoteId] = useState('peer'); // simplified for single peer
+  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
+  const [localSdp, setLocalSdp] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  
+  // Call states
+  const [callingFlag, setCallingFlag] = useState<'none'|'incoming'|'outgoing'|'active'>('none');
+  
+  const wrtc = useRef<WebRTCService | null>(null);
+
+  useEffect(() => {
+    let id = localStorage.getItem('tunnelchat_id');
+    if (!id) {
+      id = uuidv4().split('-')[0];
+      localStorage.setItem('tunnelchat_id', id);
+    }
+    setLocalId(id);
+
+    // Load offline messages from IndexedDB
+    getMessages('peer').then(setMessages);
+
+    // Initialize WebRTC
+    const w = new WebRTCService();
+    wrtc.current = w;
+
+    w.onConnectionStateChange = (state) => setConnectionState(state);
+    w.onIceCandidateGatheringComplete = (sdp) => setLocalSdp(sdp);
+    
+    w.onMessage = async (data) => {
+      // Check if it's signaling for a call
+      if (typeof data === 'string') {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.type === 'call_request') {
+             setCallingFlag('incoming');
+             return;
+          }
+          if (parsed.type === 'call_accept') {
+             setCallingFlag('active');
+             startAudioStream();
+             return;
+          }
+          if (parsed.type === 'call_reject' || parsed.type === 'call_end') {
+             endCallUI();
+             return;
+          }
+        } catch { /* normal string message */ }
+      }
+
+      // It's a regular chat message
+      const isBlob = data instanceof Blob || data instanceof ArrayBuffer;
+      const msgType = isBlob ? (data instanceof Blob && data.type.startsWith('audio') ? 'voice' : 'image') : 'text';
+      
+      const incomingMsg: ChatMessage = {
+        id: uuidv4(),
+        chatId: 'peer',
+        senderId: 'peer',
+        type: msgType,
+        content: isBlob ? new Blob([data]) : (data as string),
+        timestamp: Date.now()
+      };
+      
+      setMessages(prev => [...prev, incomingMsg]);
+      await saveMessage(incomingMsg);
+    };
+
+    return () => w.close();
+  }, []);
+
+  const handleSend = async (type: 'text'|'image'|'voice', content: string|Blob) => {
+    // Save to local IndexedDB and update state (Offline-first approach)
+    const newMsg: ChatMessage = {
+      id: uuidv4(),
+      chatId: 'peer',
+      senderId: localId,
+      type,
+      content,
+      timestamp: Date.now()
+    };
+    setMessages(prev => [...prev, newMsg]);
+    await saveMessage(newMsg);
+
+    // Send via WebRTC DataChannel if peer is connected
+    if (connectionState === 'connected') {
+      wrtc.current?.sendMessage(content);
+    }
+  };
+
+  // --- Call Management ---
+  const startAudioStream = async () => {
+     alert("P2P Audio Stream requires renegotiation SDP. For this serverless demo, using voice messages is recommended.");
+  };
+
+  const endCallUI = () => setCallingFlag('none');
+
+  const acceptCall = () => {
+    wrtc.current?.sendMessage(JSON.stringify({ type: 'call_accept' }));
+    setCallingFlag('active');
+    startAudioStream();
+  };
+  const rejectCall = () => {
+    wrtc.current?.sendMessage(JSON.stringify({ type: 'call_reject' }));
+    endCallUI();
+  };
+  const endCall = () => {
+    wrtc.current?.sendMessage(JSON.stringify({ type: 'call_end' }));
+    endCallUI();
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+    <div className="flex h-screen w-full bg-cyber-dark text-cyber-cyan overflow-hidden">
+       {/* Sidebar connection manager */}
+       <Sidebar 
+         localId={localId}
+         connectionState={connectionState}
+         generateOffer={() => wrtc.current?.createOffer()}
+         acceptOffer={(sdp) => wrtc.current?.receiveOfferAndCreateAnswer(sdp)}
+         acceptAnswer={(sdp) => wrtc.current?.receiveAnswer(sdp)}
+         localSdp={localSdp}
+       />
+       
+       {/* Main Chat Engine */}
+       <div className="flex flex-col flex-1 relative min-w-0">
+          <div className="p-4 border-b border-cyber-cyan/30 flex justify-between items-center bg-cyber-dark/80 backdrop-blur z-20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+             <div>
+                <h2 className="font-mono text-lg text-cyber-cyan" style={{textShadow: "0 0 5px #00ffff"}}>Encrypted Channel</h2>
+                <div className="text-[10px] text-cyber-cyan/50 tracking-widest uppercase">PEER-TO-PEER DATA STREAM</div>
+             </div>
+             
+             {connectionState === 'connected' && (
+                <button onClick={() => {
+                  setCallingFlag('outgoing');
+                  wrtc.current?.sendMessage(JSON.stringify({ type: 'call_request' }));
+                }} className="p-2 border border-cyber-pink text-cyber-pink rounded hover:bg-cyber-pink hover:text-black hover:shadow-[0_0_15px_#ff00ff] transition-all font-mono text-sm cursor-pointer z-50">
+                   INITIATE VOICE LINK
+                </button>
+             )}
+          </div>
+
+          <ChatWindow messages={messages} localId={localId} />
+          <InputBox onSend={handleSend} />
+          
+          <CallManager 
+            callingFlag={callingFlag} 
+            onAccept={acceptCall} 
+            onReject={rejectCall} 
+            onEndCall={endCall} 
+          />
+       </div>
     </div>
   );
 }
